@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2");
+const jwt = require("jsonwebtoken");
 
 const connection = mysql.createConnection({
   host: "localhost",
@@ -56,6 +57,39 @@ app.get("/employeeRecord", (req, res) => {
   });
 });
 
+app.get("/points", (req, res) => {
+  const { userId } = req.query;
+  const query = `SELECT points from points where userId = ?`;
+
+  connection.query(query, [userId], (error, result) => {
+    if (error) {
+      console.error("Error querying points:", error);
+      res.status(500).send({ message: "Server error" });
+    } else {
+      res
+        .status(200)
+        .json({ data: result[0]?.points, message: "Points queried successfully" });
+    }
+  });
+});
+
+app.get("/pointsHistory", (req, res) => {
+  const { userId } = req.query;
+  const query = `SELECT * from pointshistory where userId = ?`;
+
+  connection.query(query, [userId], (error, result) => {
+    console.log("result ",result)
+    if (error) {
+      console.error("Error querying pointsHistory:", error);
+      res.status(500).send({ message: "Server error" });
+    } else {
+      res
+        .status(200)
+        .json({ data: result, message: "PointsHistory queried successfully" });
+    }
+  });
+});
+
 app.post("/signup", (req, res) => {
   try {
     const body = req.body;
@@ -103,7 +137,10 @@ app.post("/login", (req, res) => {
         res.status(500).send({ message: "Server error" });
       } else {
         if (results.length > 0) {
-          res.status(200).send({ data: results, message: "Login successful" });
+          const token = jwt.sign({ userId: results[0].userId }, "secret");
+          const userData = results[0]
+          delete userData.password
+          res.status(200).send({ user: userData, token });
         } else {
           res.status(401).send({ message: "Invalid email or password" });
         }
