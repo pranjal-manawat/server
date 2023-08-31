@@ -78,7 +78,6 @@ app.get("/pointsHistory", (req, res) => {
   const query = `SELECT * from pointshistory where userId = ?`;
 
   connection.query(query, [userId], (error, result) => {
-    console.log("result ",result)
     if (error) {
       console.error("Error querying pointsHistory:", error);
       res.status(500).send({ message: "Server error" });
