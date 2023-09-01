@@ -68,7 +68,10 @@ app.get("/points", (req, res) => {
     } else {
       res
         .status(200)
-        .json({ data: result[0]?.points, message: "Points queried successfully" });
+        .json({
+          data: result[0]?.points,
+          message: "Points queried successfully",
+        });
     }
   });
 });
@@ -111,6 +114,8 @@ app.post("/signup", (req, res) => {
           connection.query(pointsQuery, [userId, email], (pointsError) => {
             if (pointsError) {
               console.error("Error creating points record:", pointsError);
+              const deleteQuery = `DELETE from users where Id = ?`;
+              connection.query(deleteQuery, [userId], () => {});
               res.status(500).json({ message: "Server error" });
             } else {
               res.status(201).json({ message: "User signed up successfully" });
@@ -137,8 +142,8 @@ app.post("/login", (req, res) => {
       } else {
         if (results.length > 0) {
           const token = jwt.sign({ userId: results[0].userId }, "secret");
-          const userData = results[0]
-          delete userData.password
+          const userData = results[0];
+          delete userData.password;
           res.status(200).send({ user: userData, token });
         } else {
           res.status(401).send({ message: "Invalid email or password" });
@@ -152,33 +157,39 @@ app.post("/login", (req, res) => {
 
 app.post("/addPoints", (req, res) => {
   const body = req.body;
-  const { description, points: pointsToAdd, userId } = body;
+  const { description, points: pointsToAdd, userId, createdByUser } = body;
   const addPointsQuery = `UPDATE points SET points = points + ? WHERE userId = ?`;
   const pointsHistoryAddQuery = `
-  INSERT INTO POINTSHISTORY (userId, points, description, operationType) 
-  VALUES (?, ?, ?, ?)`;
+  INSERT INTO POINTSHISTORY (userId, points, description, operationType, createdByUser) 
+  VALUES (?, ?, ?, ?, ?)`;
 
   connection.query(
     pointsHistoryAddQuery,
-    [userId, pointsToAdd, description, "add"],
-    (error, results) => {
+    [userId, pointsToAdd, description, "add", createdByUser],
+    (error, userResult) => {
+      const pointsHistoryId = userResult.insertId;
       if (error) {
         console.error("Error updating points history:", error);
+        res.status(500).send({ message: "Server error" });
       } else {
-        console.log("PointsHistory updated successfully");
+        connection.query(
+          addPointsQuery,
+          [pointsToAdd, userId],
+          (error, results) => {
+            if (error) {
+              console.error("Error updating points:", error);
+              const deleteQuery = `DELETE from pointshistory where Id = ?`;
+              connection.query(deleteQuery, [pointsHistoryId], () => {});
+              res.status(500).send({ message: "Server error" });
+            } else {
+              console.log("Points updated successfully");
+              res.status(200).json({ message: "Points added successfully" });
+            }
+          }
+        );
       }
     }
   );
-
-  connection.query(addPointsQuery, [pointsToAdd, userId], (error, results) => {
-    if (error) {
-      console.error("Error updating points:", error);
-      res.status(500).send({ message: "Server error" });
-    } else {
-      console.log("Points updated successfully");
-      res.status(200).json({ message: "Points added successfully" });
-    }
-  });
 });
 
 app.post("/removePoints", (req, res) => {
@@ -192,25 +203,27 @@ app.post("/removePoints", (req, res) => {
   connection.query(
     pointsHistoryRemoveQuery,
     [userId, pointsToRemove, description, "remove"],
-    (error, results) => {
-      if (error) {
-        console.error("Error updating points history:", error);
-      } else {
-        console.log("PointsHistory updated successfully");
-      }
-    }
-  );
-
-  connection.query(
-    removePointsQuery,
-    [pointsToRemove, userId],
-    (error, results) => {
+    (error, userResult) => {
+      const pointsHistoryId = userResult.insertId;
       if (error) {
         console.error("Error updating points:", error);
         res.status(500).send({ message: "Server error" });
       } else {
-        console.log("Points updated successfully");
-        res.status(200).json({ message: "Points removed successfully" });
+        connection.query(
+          removePointsQuery,
+          [pointsToRemove, userId],
+          (error, results) => {
+            if (error) {
+              console.error("Error updating points:", error);
+              const deleteQuery = `DELETE from pointshistory where Id = ?`;
+              connection.query(deleteQuery, [pointsHistoryId], () => {});
+              res.status(500).send({ message: "Server error" });
+            } else {
+              console.log("Points updated successfully");
+              res.status(200).json({ message: "Points removed successfully" });
+            }
+          }
+        );
       }
     }
   );
