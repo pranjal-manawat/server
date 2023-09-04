@@ -95,14 +95,14 @@ app.get("/pointsHistory", (req, res) => {
 app.post("/signup", (req, res) => {
   try {
     const body = req.body;
-    const { fullName, userName, email, password } = body;
+    const { fullName, email, password } = body;
     const query = `
-    INSERT INTO users (fullName, userName, email, password, isAdmin)
-    VALUES (?, ?, ?, ?, ?)`;
+    INSERT INTO users (fullName, email, password, isAdmin)
+    VALUES (?, ?, ?, ?)`;
 
     connection.query(
       query,
-      [fullName, userName, email, password, "false"],
+      [fullName, email, password, "false"],
       (error, userResult) => {
         if (error) {
           console.error("Error adding user:", error);
@@ -194,15 +194,15 @@ app.post("/addPoints", (req, res) => {
 
 app.post("/removePoints", (req, res) => {
   const body = req.body;
-  const { description, points: pointsToRemove, userId } = body;
+  const { description, points: pointsToRemove, userId, createdByUser } = body;
   const removePointsQuery = `UPDATE points SET points = points - ? WHERE userId = ?`;
   const pointsHistoryRemoveQuery = `
-  INSERT INTO POINTSHISTORY (userId, points, description, operationType) 
-  VALUES (?, ?, ?, ?)`;
+  INSERT INTO POINTSHISTORY (userId, points, description, operationType, createdByUser) 
+  VALUES (?, ?, ?, ?, ?)`;
 
   connection.query(
     pointsHistoryRemoveQuery,
-    [userId, pointsToRemove, description, "remove"],
+    [userId, pointsToRemove, description, "remove", createdByUser],
     (error, userResult) => {
       const pointsHistoryId = userResult.insertId;
       if (error) {
