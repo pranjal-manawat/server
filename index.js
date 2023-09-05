@@ -66,12 +66,10 @@ app.get("/points", (req, res) => {
       console.error("Error querying points:", error);
       res.status(500).send({ message: "Server error" });
     } else {
-      res
-        .status(200)
-        .json({
-          data: result[0]?.points,
-          message: "Points queried successfully",
-        });
+      res.status(200).json({
+        data: result[0]?.points,
+        message: "Points queried successfully",
+      });
     }
   });
 });
@@ -148,6 +146,25 @@ app.post("/login", (req, res) => {
         } else {
           res.status(401).send({ message: "Invalid email or password" });
         }
+      }
+    });
+  } catch (error) {
+    res.status(500).send({ message: error.message });
+  }
+});
+
+app.post("/resetPassword", (req, res) => {
+  try {
+    const body = req.body;
+    const { email, password } = body;
+    const query = `UPDATE users SET password = ? WHERE email = ?`;
+
+    connection.query(query, [password, email], (error, userResult) => {
+      if (error) {
+        console.error("Error reseting password:", error);
+        res.status(500).send({ message: "Server error" });
+      } else {
+        res.status(200).send({ message: "Password reseted successfully" });
       }
     });
   } catch (error) {
