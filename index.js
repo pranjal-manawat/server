@@ -25,7 +25,7 @@ app.use(express.json());
 
 app.get("/allEmployeeRecords", (req, res) => {
   const query = `
-  SELECT users.fullName, users.email, users.Id, users.isAdmin, points.points
+  SELECT users.fullName, users.email, users.Id, users.isAdmin, users.employeeId, points.points
   FROM users JOIN points ON users.id = points.userId`;
   connection.query(query, (error, userResult) => {
     if (error) {
@@ -93,14 +93,14 @@ app.get("/pointsHistory", (req, res) => {
 app.post("/signup", (req, res) => {
   try {
     const body = req.body;
-    const { fullName, email, password } = body;
+    const { fullName, email, password, employeeId } = body;
     const query = `
-    INSERT INTO users (fullName, email, password, isAdmin)
-    VALUES (?, ?, ?, ?)`;
+    INSERT INTO users (fullName, email, password, isAdmin, employeeId)
+    VALUES (?, ?, ?, ?, ?)`;
 
     connection.query(
       query,
-      [fullName, email, password, "false"],
+      [fullName, email, password, "false", employeeId],
       (error, userResult) => {
         if (error) {
           console.error("Error adding user:", error);
