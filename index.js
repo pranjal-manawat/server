@@ -25,8 +25,8 @@ app.use(express.json());
 
 app.get("/allEmployeeRecords", (req, res) => {
   const query = `
-  SELECT users.fullName, users.email, users.Id, users.isAdmin, users.employeeId, points.points
-  FROM users JOIN points ON users.id = points.userId`;
+  SELECT users.fullName, users.email, users.isAdmin, users.employeeId, points.rewardPoints
+  FROM users JOIN points ON users.employeeId = points.employeeId`;
   connection.query(query, (error, userResult) => {
     if (error) {
       console.error("Error querying users:", error);
@@ -42,8 +42,8 @@ app.get("/allEmployeeRecords", (req, res) => {
 app.get("/employeeRecord", (req, res) => {
   const { email } = req.query;
   const query = `
-  SELECT users.fullName, users.email, users.Id, users.isAdmin, points.points
-  FROM users JOIN points ON users.id = points.userId WHERE email = ?`;
+  SELECT users.fullName, users.email, users.employeeId, users.isAdmin, points.rewardPoints
+  FROM users JOIN points ON users.employeeId = points.employeeId WHERE users.email = ?`;
 
   connection.query(query, [email], (error, userResult) => {
     if (error) {
@@ -58,16 +58,16 @@ app.get("/employeeRecord", (req, res) => {
 });
 
 app.get("/points", (req, res) => {
-  const { userId } = req.query;
-  const query = `SELECT points from points where userId = ?`;
+  const { employeeId } = req.query;
+  const query = `SELECT rewardPoints from points where employeeId = ?`;
 
-  connection.query(query, [userId], (error, result) => {
+  connection.query(query, [employeeId], (error, result) => {
     if (error) {
       console.error("Error querying points:", error);
       res.status(500).send({ message: "Server error" });
     } else {
       res.status(200).json({
-        data: result[0]?.points,
+        data: result[0]?.rewardPoints,
         message: "Points queried successfully",
       });
     }
@@ -75,10 +75,10 @@ app.get("/points", (req, res) => {
 });
 
 app.get("/pointsHistory", (req, res) => {
-  const { userId } = req.query;
-  const query = `SELECT * from pointshistory where userId = ?`;
+  const { employeeId } = req.query;
+  const query = `SELECT * from pointshistory where employeeId = ?`;
 
-  connection.query(query, [userId], (error, result) => {
+  connection.query(query, [employeeId], (error, result) => {
     if (error) {
       console.error("Error querying pointsHistory:", error);
       res.status(500).send({ message: "Server error" });
@@ -106,14 +106,13 @@ app.post("/signup", (req, res) => {
           console.error("Error adding user:", error);
           res.status(500).send({ message: "Server error" });
         } else {
-          const userId = userResult.insertId;
-          const pointsQuery = `INSERT INTO Points (userId, userEmail, points) VALUES (?, ?, 0)`;
+          const pointsQuery = `INSERT INTO Points (employeeId, fullName, email, rewardPoints) VALUES (?, ?, ?, 0)`;
 
-          connection.query(pointsQuery, [userId, email], (pointsError) => {
+          connection.query(pointsQuery, [employeeId, fullName, email], (pointsError) => {
             if (pointsError) {
               console.error("Error creating points record:", pointsError);
-              const deleteQuery = `DELETE from users where Id = ?`;
-              connection.query(deleteQuery, [userId], () => {});
+              const deleteQuery = `DELETE from users where employeeId = ?`;
+              connection.query(deleteQuery, [employeeId], () => {});
               res.status(500).json({ message: "Server error" });
             } else {
               res.status(201).json({ message: "User signed up successfully" });
@@ -139,7 +138,7 @@ app.post("/login", (req, res) => {
         res.status(500).send({ message: "Server error" });
       } else {
         if (results.length > 0) {
-          const token = jwt.sign({ userId: results[0].userId }, "secret");
+          const token = jwt.sign({ userId: results[0].employeeId }, "secret");
           const userData = results[0];
           delete userData.password;
           res.status(200).send({ user: userData, token });
@@ -174,15 +173,15 @@ app.post("/resetPassword", (req, res) => {
 
 app.post("/addPoints", (req, res) => {
   const body = req.body;
-  const { description, points: pointsToAdd, userId, createdByUser } = body;
-  const addPointsQuery = `UPDATE points SET points = points + ? WHERE userId = ?`;
+  const { description, points: pointsToAdd, employeeId, createdByUser } = body;
+  const addPointsQuery = `UPDATE points SET rewardPoints = rewardPoints + ? WHERE employeeId = ?`;
   const pointsHistoryAddQuery = `
-  INSERT INTO POINTSHISTORY (userId, points, description, operationType, createdByUser) 
+  INSERT INTO POINTSHISTORY (employeeId, points, description, operationType, createdByUser) 
   VALUES (?, ?, ?, ?, ?)`;
 
   connection.query(
     pointsHistoryAddQuery,
-    [userId, pointsToAdd, description, "add", createdByUser],
+    [employeeId, pointsToAdd, description, "add", createdByUser],
     (error, userResult) => {
       const pointsHistoryId = userResult.insertId;
       if (error) {
@@ -191,7 +190,7 @@ app.post("/addPoints", (req, res) => {
       } else {
         connection.query(
           addPointsQuery,
-          [pointsToAdd, userId],
+          [pointsToAdd, employeeId],
           (error, results) => {
             if (error) {
               console.error("Error updating points:", error);
@@ -211,15 +210,15 @@ app.post("/addPoints", (req, res) => {
 
 app.post("/removePoints", (req, res) => {
   const body = req.body;
-  const { description, points: pointsToRemove, userId, createdByUser } = body;
-  const removePointsQuery = `UPDATE points SET points = points - ? WHERE userId = ?`;
+  const { description, points: pointsToRemove, employeeId, createdByUser } = body;
+  const removePointsQuery = `UPDATE points SET rewardPoints = rewardPoints - ? WHERE employeeId = ?`;
   const pointsHistoryRemoveQuery = `
-  INSERT INTO POINTSHISTORY (userId, points, description, operationType, createdByUser) 
+  INSERT INTO POINTSHISTORY (employeeId, points, description, operationType, createdByUser) 
   VALUES (?, ?, ?, ?, ?)`;
 
   connection.query(
     pointsHistoryRemoveQuery,
-    [userId, pointsToRemove, description, "remove", createdByUser],
+    [employeeId, pointsToRemove, description, "remove", createdByUser],
     (error, userResult) => {
       const pointsHistoryId = userResult.insertId;
       if (error) {
@@ -228,7 +227,7 @@ app.post("/removePoints", (req, res) => {
       } else {
         connection.query(
           removePointsQuery,
-          [pointsToRemove, userId],
+          [pointsToRemove, employeeId],
           (error, results) => {
             if (error) {
               console.error("Error updating points:", error);
