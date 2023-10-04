@@ -108,16 +108,22 @@ app.post("/signup", (req, res) => {
         } else {
           const pointsQuery = `INSERT INTO Points (employeeId, fullName, email, rewardPoints) VALUES (?, ?, ?, 0)`;
 
-          connection.query(pointsQuery, [employeeId, fullName, email], (pointsError) => {
-            if (pointsError) {
-              console.error("Error creating points record:", pointsError);
-              const deleteQuery = `DELETE from users where employeeId = ?`;
-              connection.query(deleteQuery, [employeeId], () => {});
-              res.status(500).json({ message: "Server error" });
-            } else {
-              res.status(201).json({ message: "User signed up successfully" });
+          connection.query(
+            pointsQuery,
+            [employeeId, fullName, email],
+            (pointsError) => {
+              if (pointsError) {
+                console.error("Error creating points record:", pointsError);
+                const deleteQuery = `DELETE from users where employeeId = ?`;
+                connection.query(deleteQuery, [employeeId], () => {});
+                res.status(500).json({ message: "Server error" });
+              } else {
+                res
+                  .status(201)
+                  .json({ message: "User signed up successfully" });
+              }
             }
-          });
+          );
         }
       }
     );
@@ -155,15 +161,35 @@ app.post("/login", (req, res) => {
 app.post("/resetPassword", (req, res) => {
   try {
     const body = req.body;
-    const { email, password } = body;
-    const query = `UPDATE users SET password = ? WHERE email = ?`;
+    const { email, oldPassword, newPassword } = body;
 
-    connection.query(query, [password, email], (error, userResult) => {
+    const query = `SELECT users.password from users WHERE email = ?`;
+
+    connection.query(query, [email], (error, userResult) => {
       if (error) {
-        console.error("Error reseting password:", error);
+        console.error("Error changing password:", error);
         res.status(500).send({ message: "Server error" });
       } else {
-        res.status(200).send({ message: "Password reseted successfully" });
+        if (oldPassword !== userResult[0].password) {
+          res.status(500).send({ message: "Enter Correct Old Password" });
+        } else {
+          const updateQuery = `UPDATE users SET password = ? WHERE email = ?`;
+
+          connection.query(
+            updateQuery,
+            [newPassword, email],
+            (error, userResult) => {
+              if (error) {
+                console.error("Error changing password:", error);
+                res.status(500).send({ message: "Server error" });
+              } else {
+                res
+                  .status(200)
+                  .send({ message: "Password changed successfully" });
+              }
+            }
+          );
+        }
       }
     });
   } catch (error) {
@@ -210,7 +236,12 @@ app.post("/addPoints", (req, res) => {
 
 app.post("/removePoints", (req, res) => {
   const body = req.body;
-  const { description, points: pointsToRemove, employeeId, createdByUser } = body;
+  const {
+    description,
+    points: pointsToRemove,
+    employeeId,
+    createdByUser,
+  } = body;
   const removePointsQuery = `UPDATE points SET rewardPoints = rewardPoints - ? WHERE employeeId = ?`;
   const pointsHistoryRemoveQuery = `
   INSERT INTO POINTSHISTORY (employeeId, points, description, operationType, createdByUser) 
