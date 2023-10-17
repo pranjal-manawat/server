@@ -25,7 +25,7 @@ app.use(express.json());
 
 app.get("/allEmployeeRecords", (req, res) => {
   const query = `
-  SELECT users.fullName, users.email, users.isAdmin, users.employeeId, points.rewardPoints
+  SELECT users.employeeId, users.fullName, users.email, users.isAdmin, points.rewardPoints
   FROM users JOIN points ON users.employeeId = points.employeeId`;
   connection.query(query, (error, userResult) => {
     if (error) {
@@ -42,7 +42,7 @@ app.get("/allEmployeeRecords", (req, res) => {
 app.get("/employeeRecord", (req, res) => {
   const { email } = req.query;
   const query = `
-  SELECT users.fullName, users.email, users.employeeId, users.isAdmin, points.rewardPoints
+  SELECT users.employeeId, users.fullName, users.email, users.isAdmin, points.rewardPoints
   FROM users JOIN points ON users.employeeId = points.employeeId WHERE users.email = ?`;
 
   connection.query(query, [email], (error, userResult) => {
