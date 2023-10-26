@@ -3,18 +3,41 @@ const cors = require("cors");
 const mysql = require("mysql2");
 const jwt = require("jsonwebtoken");
 
-const connection = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "root",
-  database: "linkup_schema",
+let connection = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: 'root',
+  database: 'linkup_schema',
 });
 
 connection.connect((err) => {
   if (err) {
-    console.error("Error connecting to MySQL:", err);
+    console.error('Error connecting to MySQL:', err);
   } else {
-    console.log("Connected to MySQL");
+    console.log('Connected to MySQL');
+  }
+});
+
+connection.on('error', (err) => {
+  if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+    console.log('Reconnecting to MySQL...');
+
+    connection = mysql.createConnection({
+      host: 'localhost',
+      user: 'root',
+      password: 'root',
+      database: 'linkup_schema',
+    });
+
+    connection.connect((connectErr) => {
+      if (connectErr) {
+        console.error('Error reconnecting to MySQL:', connectErr);
+      } else {
+        console.log('Reconnected to MySQL');
+      }
+    });
+  } else {
+    console.error('MySQL connection error:', err);
   }
 });
 
@@ -95,12 +118,12 @@ app.post("/signup", (req, res) => {
     const body = req.body;
     const { fullName, email, password, employeeId } = body;
     const query = `
-    INSERT INTO users (fullName, email, password, isAdmin, employeeId)
-    VALUES (?, ?, ?, ?, ?)`;
+    INSERT INTO users (fullName, email, password, isAdmin, employeeId, status)
+    VALUES (?, ?, ?, ?, ?, ?)`;
 
     connection.query(
       query,
-      [fullName, email, password, "false", employeeId],
+      [fullName, email, password, "false", employeeId, "Active"],
       (error, userResult) => {
         if (error) {
           console.error("Error adding user:", error);
