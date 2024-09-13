@@ -5,8 +5,8 @@ const jwt = require("jsonwebtoken");
 
 let connection = mysql.createConnection({
   host: 'localhost',
-  user: 'root',
-  password: 'root',
+  user: 'rewardpoint',
+  password: 'h$12SED@m2w',
   database: 'linkup_schema',
 });
 
